@@ -1,3 +1,5 @@
+import toast from "react-hot-toast";
+
 type ApiErrorLike = {
   message?: string;
   details?: string;
@@ -5,16 +7,24 @@ type ApiErrorLike = {
   code?: string;
 };
 
-export function alertApiError(context: string, error?: ApiErrorLike | null) {
+function formatApiError(context: string, error?: ApiErrorLike | null) {
   const parts = [context];
   if (error?.message) parts.push(error.message);
   if (error?.details) parts.push(error.details);
   if (error?.hint) parts.push(`Hint: ${error.hint}`);
-  window.alert(parts.filter(Boolean).join("\n\n"));
+  return parts.filter(Boolean).join("\n\n");
+}
+
+export function alertApiError(context: string, error?: ApiErrorLike | null) {
+  toast.error(formatApiError(context, error));
 }
 
 export function alertMessage(message: string) {
-  window.alert(message);
+  toast(message);
+}
+
+export function alertSuccess(message: string) {
+  toast.success(message);
 }
 
 export function alertStorageUploadError(
@@ -24,7 +34,7 @@ export function alertStorageUploadError(
 ) {
   const message = error?.message?.toLowerCase() ?? "";
   if (message.includes("bucket not found")) {
-    window.alert(
+    toast.error(
       `${context}\n\nBucket not found — the Storage bucket does not exist in this Supabase project yet.\n\n${setupHint}`,
     );
     return;

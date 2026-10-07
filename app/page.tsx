@@ -11,7 +11,7 @@ import { LogTradeView } from "@/components/log-trade-view";
 import { TradesView } from "@/components/trades-view";
 import { useTradeJournal } from "@/hooks/use-trade-journal";
 import { computeTradeAnalytics } from "@/lib/trades/analytics";
-import { alertApiError, alertMessage } from "@/lib/api-error";
+import { alertApiError, alertMessage, alertSuccess } from "@/lib/api-error";
 import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +66,7 @@ export default function Page() {
     }
     setNewUserName("");
     setShowCreateUser(false);
-    alertMessage(
+    alertSuccess(
       `Trader "${name}" created. Set is_eligible to true in Supabase (trader_users) before they can log trades.`,
     );
   }
