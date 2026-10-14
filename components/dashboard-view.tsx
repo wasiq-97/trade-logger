@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import type { TradeAnalytics } from "@/lib/trades/analytics";
+import { formatWinLoseAmount } from "@/lib/trades/format-money";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -47,12 +48,49 @@ export function DashboardView({ analytics, loading, traderLabel }: Props) {
         </div>
       ) : (
         <>
-          <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard
-              label="Trades this week"
-              value={String(analytics.tradesThisWeek)}
-              hint={deltaLabel}
-              hintPositive={weekDelta >= 0}
+              label="Total won"
+              value={formatWinLoseAmount(
+                analytics.totalWinAmount === 0 &&
+                  analytics.wins === 0
+                  ? null
+                  : analytics.totalWinAmount,
+              )}
+              hint={`${analytics.wins} winning trade${analytics.wins === 1 ? "" : "s"}`}
+              hintPositive
+              valueClassName="text-[var(--teal-dark)]"
+            />
+            <StatCard
+              label="Total lost"
+              value={formatWinLoseAmount(
+                analytics.totalLossAmount === 0 &&
+                  analytics.losses === 0
+                  ? null
+                  : -analytics.totalLossAmount,
+              )}
+              hint={`${analytics.losses} losing trade${analytics.losses === 1 ? "" : "s"}`}
+              hintPositive={false}
+              valueClassName="text-[var(--rose)]"
+            />
+            <StatCard
+              label="Net P/L"
+              value={formatWinLoseAmount(
+                analytics.totalTrades === 0 ? null : analytics.netAmount,
+              )}
+              hint="Wins minus losses"
+              hintPositive={
+                analytics.netAmount > 0
+                  ? true
+                  : analytics.netAmount < 0
+                    ? false
+                    : undefined
+              }
+              valueClassName={cn(
+                analytics.netAmount >= 0
+                  ? "text-[var(--teal-dark)]"
+                  : "text-[var(--rose)]",
+              )}
             />
             <StatCard
               label="Win rate"
@@ -68,6 +106,15 @@ export function DashboardView({ analytics, loading, traderLabel }: Props) {
                   <TrendingDown className="size-5 text-[var(--rose)]" />
                 ) : null
               }
+            />
+          </div>
+
+          <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard
+              label="Trades this week"
+              value={String(analytics.tradesThisWeek)}
+              hint={deltaLabel}
+              hintPositive={weekDelta >= 0}
             />
             <StatCard
               label="Wins / losses"
@@ -132,10 +179,30 @@ export function DashboardView({ analytics, loading, traderLabel }: Props) {
                     {analytics.wins}
                   </span>
                 </li>
-                <li className="flex justify-between">
+                <li className="flex justify-between border-b border-[var(--line)] pb-2">
                   <span className="text-[var(--muted)]">Losing trades</span>
                   <span className="font-bold text-[var(--rose)]">
                     {analytics.losses}
+                  </span>
+                </li>
+                <li className="flex justify-between border-b border-[var(--line)] pb-2">
+                  <span className="text-[var(--muted)]">Total won</span>
+                  <span className="font-bold tabular-nums text-[var(--teal-dark)]">
+                    {formatWinLoseAmount(
+                      analytics.totalWinAmount === 0 && analytics.wins === 0
+                        ? null
+                        : analytics.totalWinAmount,
+                    )}
+                  </span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-[var(--muted)]">Total lost</span>
+                  <span className="font-bold tabular-nums text-[var(--rose)]">
+                    {formatWinLoseAmount(
+                      analytics.totalLossAmount === 0 && analytics.losses === 0
+                        ? null
+                        : -analytics.totalLossAmount,
+                    )}
                   </span>
                 </li>
               </ul>
@@ -154,6 +221,7 @@ function StatCard({
   hintPositive,
   hintAccent,
   icon,
+  valueClassName,
 }: {
   label: string;
   value: string;
@@ -161,6 +229,7 @@ function StatCard({
   hintPositive?: boolean;
   hintAccent?: boolean;
   icon?: ReactNode;
+  valueClassName?: string;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4">
@@ -168,7 +237,9 @@ function StatCard({
         {label}
       </div>
       <div className="mt-2 flex items-end justify-between">
-        <span className="text-2xl font-bold">{value}</span>
+        <span className={cn("text-2xl font-bold tabular-nums", valueClassName)}>
+          {value}
+        </span>
         {icon ??
           (hint && (
             <span

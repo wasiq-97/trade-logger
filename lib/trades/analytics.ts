@@ -10,6 +10,9 @@ export type TradeAnalytics = {
   losses: number;
   streakLabel: string;
   streakCount: number;
+  totalWinAmount: number;
+  totalLossAmount: number;
+  netAmount: number;
 };
 
 function startOfWeekMonday(date: Date): Date {
@@ -59,6 +62,15 @@ export function computeTradeAnalytics(trades: Trade[]): TradeAnalytics {
     return bTs - aTs;
   });
 
+  let totalWinAmount = 0;
+  let totalLossAmount = 0;
+  for (const trade of trades) {
+    if (trade.winLoseAmount === null) continue;
+    const abs = Math.abs(trade.winLoseAmount);
+    if (trade.result === "Win") totalWinAmount += abs;
+    else totalLossAmount += abs;
+  }
+
   let streakLabel = "No trades yet";
   let streakCount = 0;
   if (sorted.length > 0) {
@@ -84,5 +96,8 @@ export function computeTradeAnalytics(trades: Trade[]): TradeAnalytics {
     losses,
     streakLabel,
     streakCount,
+    totalWinAmount,
+    totalLossAmount,
+    netAmount: totalWinAmount - totalLossAmount,
   };
 }

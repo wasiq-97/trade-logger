@@ -5,7 +5,10 @@ import { Eye, Search } from "lucide-react";
 import { TradeDetailView } from "@/components/trade-detail-view";
 import type { Trade } from "@/lib/trades/types";
 import { formatWinLoseAmount } from "@/lib/trades/format-money";
+import { tradeMatchesExecutionDate } from "@/lib/trades/execution-date-filter";
 import { cn } from "@/lib/utils";
+
+type ResultFilter = "all" | "Win" | "Lose";
 
 type Props = {
   trades: Trade[];
@@ -13,26 +16,66 @@ type Props = {
   traderLabel: string;
 };
 
+const resultFilters: { id: ResultFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "Win", label: "Wins" },
+  { id: "Lose", label: "Losses" },
+];
+
+function applyResultFilter(trades: Trade[], resultFilter: ResultFilter) {
+  if (resultFilter === "all") return trades;
+  return trades.filter((trade) => trade.result === resultFilter);
+}
+
+function applySearchFilter(trades: Trade[], query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return trades;
+  return trades.filter(
+    (trade) =>
+      trade.user.toLowerCase().includes(q) ||
+      trade.narrative.toLowerCase().includes(q) ||
+      trade.directionalBias.toLowerCase().includes(q) ||
+      trade.tradeDirection.toLowerCase().includes(q) ||
+      trade.reason.toLowerCase().includes(q) ||
+      trade.result.toLowerCase().includes(q) ||
+      formatWinLoseAmount(trade.winLoseAmount).toLowerCase().includes(q),
+  );
+}
+
 export function TradesView({ trades, loading, traderLabel }: Props) {
   const [query, setQuery] = useState("");
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
+  const [executeDate, setExecuteDate] = useState("");
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return trades;
-    return trades.filter(
-      (trade) =>
-        trade.user.toLowerCase().includes(q) ||
-        trade.narrative.toLowerCase().includes(q) ||
-        trade.directionalBias.toLowerCase().includes(q) ||
-        trade.tradeDirection.toLowerCase().includes(q) ||
-        trade.reason.toLowerCase().includes(q) ||
-        trade.result.toLowerCase().includes(q) ||
-        formatWinLoseAmount(trade.winLoseAmount)
-          .toLowerCase()
-          .includes(q),
-    );
-  }, [trades, query]);
+  const byDate = useMemo(
+    () =>
+      trades.filter((trade) => tradeMatchesExecutionDate(trade, executeDate)),
+    [trades, executeDate],
+  );
+
+  const byResult = useMemo(
+    () => applyResultFilter(byDate, resultFilter),
+    [byDate, resultFilter],
+  );
+
+  const filtered = useMemo(
+    () => applySearchFilter(byResult, query),
+    [byResult, query],
+  );
+
+  function emptyMessage(): string {
+    if (trades.length === 0) {
+      return "No trades logged yet. Use Log trade to add your first entry.";
+    }
+    if (byDate.length === 0 && executeDate) {
+      return "No trades executed on this date.";
+    }
+    if (applyResultFilter(byDate, resultFilter).length === 0) {
+      return `No ${resultFilter === "Win" ? "winning" : "losing"} trades in this view.`;
+    }
+    return "No trades match your current filters.";
+  }
 
   if (selectedTrade) {
     return (
@@ -51,19 +94,57 @@ export function TradesView({ trades, loading, traderLabel }: Props) {
             All trades
           </h1>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            {traderLabel} · {trades.length} entr
-            {trades.length === 1 ? "y" : "ies"}
+            {traderLabel} · {filtered.length} shown
+            {filtered.length !== trades.length && (
+              <span> of {trades.length}</span>
+            )}
           </p>
         </div>
-        <label className="flex h-11 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--muted)] sm:w-72">
-          <Search className="size-4 shrink-0" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search trades…"
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[var(--muted)]"
-          />
-        </label>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+          <div
+            className="flex rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1"
+            role="group"
+            aria-label="Filter by result"
+          >
+            {resultFilters.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setResultFilter(id)}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-xs font-bold transition",
+                  resultFilter === id
+                    ? id === "Win"
+                      ? "bg-[var(--teal-soft)] text-[var(--teal-dark)]"
+                      : id === "Lose"
+                        ? "bg-[var(--rose-soft)] text-[var(--rose)]"
+                        : "bg-[var(--navy)] text-white"
+                    : "text-[var(--muted)] hover:bg-[var(--surface-2)]",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="date"
+              value={executeDate}
+              onChange={(e) => setExecuteDate(e.target.value)}
+              aria-label="Filter by execution date"
+              className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--teal)] sm:w-[11.5rem] [color-scheme:light]"
+            />
+            <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--muted)] sm:w-56">
+              <Search className="size-4 shrink-0" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search trades…"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[var(--muted)]"
+              />
+            </label>
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -72,9 +153,7 @@ export function TradesView({ trades, loading, traderLabel }: Props) {
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--line-strong)] py-12 text-center text-xs text-[var(--muted)]">
-          {trades.length === 0
-            ? "No trades logged yet. Use Log trade to add your first entry."
-            : "No trades match your search."}
+          {emptyMessage()}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
