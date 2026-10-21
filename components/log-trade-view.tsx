@@ -306,7 +306,7 @@ export function LogTradeView({
                 }
               />
               <FileField
-                label="Execution · LTF"
+                label="Result"
                 helper="Upload entry chart"
                 onChange={(file) =>
                   setFiles((current) => ({ ...current, executionLtf: file }))

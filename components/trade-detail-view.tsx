@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const IMAGE_LABELS: Record<string, string> = {
   narrative4h: "Narrative · 4h",
   narrative1h: "Narrative · 1h",
-  executionLtf: "Execution · LTF",
+  executionLtf: "Result"
 };
 
 type Props = {
